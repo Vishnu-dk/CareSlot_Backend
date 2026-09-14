@@ -1,4 +1,4 @@
-package com.CareSlot;
+package com.careslot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
