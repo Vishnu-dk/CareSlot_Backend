@@ -6,6 +6,9 @@ import com.careslot.db.generated.tables.records.UsersRecord;
 import com.careslot.dto.auth.AuthResponse;
 import com.careslot.dto.auth.LoginRequest;
 import com.careslot.dto.auth.RegisterRequest;
+import com.careslot.exception.InvalidCredentialsException;
+import com.careslot.exception.ResourceNotFoundException;
+import com.careslot.exception.UserAlreadyExistsException;
 import com.careslot.repository.AuthRepository;
 import com.careslot.repository.UserRepository;
 import com.careslot.security.JwtServices;
@@ -31,14 +34,14 @@ public class AuthService {
 
     public void register(RegisterRequest request){
         if(userRepository.existsByEmail(request.getEmail())){
-            throw new IllegalArgumentException("Email already exists ");
+            throw new UserAlreadyExistsException("Email already exists ");
         }
         UserRole role;
 
         try {
             role = UserRole.valueOf(request.getRole().name());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid Role");
+            throw new IllegalArgumentException("Invalid Role");
         }
 
         String hashPassword=passwordEncoder.encode(request.getPassword());
@@ -49,10 +52,10 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         UsersRecord user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadCredentialsException("Invalid Credentials"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid Credentials"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid Credentials");
+            throw new InvalidCredentialsException("Invalid Credentials");
         }
 
         String token = jwtServices.generateToken(user.getId(), user.getEmail(), user.getRole());
