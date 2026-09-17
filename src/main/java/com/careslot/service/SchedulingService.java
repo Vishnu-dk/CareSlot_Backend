@@ -4,6 +4,7 @@ import com.careslot.db.generated.tables.records.AppointmentsRecord;
 import com.careslot.db.generated.tables.records.ClinicianAvailabilityRecord;
 import com.careslot.dto.availability.AvailabilityRequest;
 import com.careslot.dto.availability.AvailableSlotResponse;
+import com.careslot.dto.availability.WeeklyAvailabilityResponse;
 import com.careslot.exception.ResourceNotFoundException;
 import com.careslot.repository.AppointmentRepository;
 import com.careslot.repository.ClinicianAvailabilityRepository;
@@ -13,6 +14,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,20 +34,30 @@ public class SchedulingService {
     }
 
     public void saveAvailability(UUID userId, AvailabilityRequest request) {
-        // userId IS the clinicianId. Just verify the profile exists.
         if (!clinicianRepository.existsById(userId)) {
-            throw new ResourceNotFoundException("Clinician profile not found for user: " + userId);
+            throw new ResourceNotFoundException("Clinician profile not found for user ");
         }
         clinicianAvailabilityRepository.saveAvailability(userId, request.getDayOfWeek(), request.getStartTime(), request.getEndTime());
     }
 
-    public List<AvailableSlotResponse> getAvailableSlot(UUID userId, LocalDate date) {
-        // 1. Verify profile exists
+    public void updateAvailability(UUID userId, AvailabilityRequest request) {
         if (!clinicianRepository.existsById(userId)) {
             throw new ResourceNotFoundException("Clinician profile not found for user: " + userId);
         }
 
-        // 2. Fetch availability using userId directly
+        ClinicianAvailabilityRecord existing = clinicianAvailabilityRepository.findByClinicianIdAndDay(userId, request.getDayOfWeek());
+        if (existing == null) {
+            throw new ResourceNotFoundException("No availability found for day this day" );
+        }
+
+        clinicianAvailabilityRepository.updateAvailability(userId, request.getDayOfWeek(), request.getStartTime(), request.getEndTime());
+    }
+
+    public List<AvailableSlotResponse> getAvailableSlot(UUID userId, LocalDate date) {
+        if (!clinicianRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("Clinician profile not found for user");
+        }
+
         int dayOfWeek = date.getDayOfWeek().getValue();
         List<ClinicianAvailabilityRecord> availability = clinicianAvailabilityRepository.findByClinicianId(userId);
 
@@ -58,7 +70,6 @@ public class SchedulingService {
         LocalTime end = dayAvailability.getEndTime();
         Duration duration = Duration.ofMinutes(30);
 
-        // 3. Fetch appointments using userId directly
         List<AppointmentsRecord> existingAppointments = appointmentRepository.findByClinicianAndDate(userId, date);
         List<AvailableSlotResponse> availableSlots = new ArrayList<>();
         LocalTime currentSlotStart = start;
@@ -84,5 +95,24 @@ public class SchedulingService {
             currentSlotStart = currentSlotEnd;
         }
         return availableSlots;
+    }
+    public List<WeeklyAvailabilityResponse> getWeeklyAvailability(UUID clinicianId) {
+        if (!clinicianRepository.existsById(clinicianId)) {
+            throw new ResourceNotFoundException("Clinician profile not found");
+        }
+
+        List<ClinicianAvailabilityRecord> availability = clinicianAvailabilityRepository.findByClinicianId(clinicianId);
+
+        String[] dayNames = {"", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+
+        return availability.stream()
+                .map(a -> WeeklyAvailabilityResponse.builder()
+                        .dayOfWeek(a.getDayOfWeek())
+                        .dayName(dayNames[a.getDayOfWeek()])
+                        .startTime(a.getStartTime())
+                        .endTime(a.getEndTime())
+                        .build())
+                .sorted(Comparator.comparing(WeeklyAvailabilityResponse::getDayOfWeek))
+                .toList();
     }
 }
