@@ -34,8 +34,9 @@ public class PatientController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse("Patient profile created successfully"));
     }
 
+
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CLINICIAN')")
     public ResponseEntity<List<PatientResponse>> getAllPatients() {
         List<PatientResponse> patients = patientService.getAllPatients();
         return ResponseEntity.ok(patients);

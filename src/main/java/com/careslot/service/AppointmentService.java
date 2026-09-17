@@ -36,9 +36,12 @@ public class AppointmentService {
             throw new ResourceNotFoundException("Clinician not found");
         }
 
+
         OffsetDateTime startsAt = OffsetDateTime.of(request.getDate(), request.getStartTime(), ZoneOffset.UTC);
         OffsetDateTime endsAt = OffsetDateTime.of(request.getDate(), request.getEndTime(), ZoneOffset.UTC);
-
+        if (appointmentRepository.existsOverlappingForPatient(patient.getId(), startsAt, endsAt)) {
+            throw new SlotNotAvailableException("You already have an appointment scheduled at this time.");
+        }
         try {
             var record = appointmentRepository.save(patient.getId(), request.getClinicianId(), startsAt, endsAt, request.getReason());
 

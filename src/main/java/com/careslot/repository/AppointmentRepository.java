@@ -32,6 +32,32 @@ public class AppointmentRepository {
                 .and(APPOINTMENTS.STATUS.ne(AppointmentStatus.CANCELLED))
                 .fetch();
     }
+    public boolean existsOverlappingForPatient(UUID patientId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
+        return dsl.fetchCount(
+                dsl.selectFrom(APPOINTMENTS)
+                        .where(APPOINTMENTS.PATIENT_ID.eq(patientId))
+                        .and(APPOINTMENTS.STARTS_AT.lessThan(endsAt))
+                        .and(APPOINTMENTS.ENDS_AT.greaterThan(startsAt))
+                        .and(APPOINTMENTS.STATUS.ne(AppointmentStatus.CANCELLED))
+        ) > 0;
+    }
+    public boolean hasBookedAppointment(UUID patientId){
+        return dsl.fetchCount(
+                dsl.selectFrom(APPOINTMENTS)
+                        .where(APPOINTMENTS.PATIENT_ID.eq(patientId))
+                        .and(APPOINTMENTS.STATUS.eq(AppointmentStatus.BOOKED))
+        ) > 0;
+    }
+
+
+    public boolean existsValidAppointment(UUID patientId, UUID clinicianId) {
+        return dsl.fetchCount(
+                dsl.selectFrom(APPOINTMENTS)
+                        .where(APPOINTMENTS.PATIENT_ID.eq(patientId))
+                        .and(APPOINTMENTS.CLINICIAN_ID.eq(clinicianId))
+                        .and(APPOINTMENTS.STATUS.eq(AppointmentStatus.BOOKED)) // As requested
+        ) > 0;
+    }
     public AppointmentsRecord save(UUID patientId, UUID clinicianId, OffsetDateTime startsAt, OffsetDateTime endsAt, String reason) {
         var record = dsl.newRecord(APPOINTMENTS);
         record.setPatientId(patientId);

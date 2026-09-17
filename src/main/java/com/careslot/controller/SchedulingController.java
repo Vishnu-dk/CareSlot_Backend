@@ -1,5 +1,6 @@
 package com.careslot.controller;
 
+import com.careslot.dto.auth.ApiResponse;
 import com.careslot.dto.availability.AvailableSlotResponse;
 import com.careslot.dto.availability.AvailabilityRequest;
 import com.careslot.service.SchedulingService;
@@ -26,13 +27,13 @@ public class SchedulingController {
     // Clinician sets their own availability using the userId from JWT
     @PostMapping("/availability")
     @PreAuthorize("hasRole('CLINICIAN') or hasRole('ADMIN')")
-    public ResponseEntity<Void> setAvailability(
+    public ResponseEntity<ApiResponse> setAvailability(
             @Valid @RequestBody AvailabilityRequest request,
             Authentication authentication) {
 
         UUID userId = UUID.fromString(authentication.getPrincipal().toString());
         schedulingService.saveAvailability(userId, request);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new ApiResponse("Availability updated"));
     }
 
     // Frontend passes the userId to view slots
