@@ -13,7 +13,9 @@ import java.util.UUID;
 public class AppointmentResponse {
     private UUID id;
     private UUID patientId;
+    private String patientName;
     private UUID clinicianId;
+    private String clinicianName;
     private OffsetDateTime startsAt;
     private OffsetDateTime endsAt;
     private AppointmentStatus status;

@@ -6,12 +6,10 @@ import com.careslot.db.generated.tables.records.CarePlanTasksRecord;
 import com.careslot.db.generated.tables.records.CarePlansRecord;
 import com.careslot.dto.careplan.CarePlanRequest;
 import com.careslot.dto.careplan.CarePlanResponse;
+import com.careslot.dto.careplan.CarePlanTaskResponse;
 import com.careslot.exception.ResourceNotFoundException;
 import com.careslot.exception.UserAlreadyExistsException;
-import com.careslot.repository.AppointmentRepository;
-import com.careslot.repository.CarePlanRepository;
-import com.careslot.repository.CarePlanTaskRepository;
-import com.careslot.repository.PatientRepository;
+import com.careslot.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,13 +25,15 @@ public class CarePlanService {
     private final CarePlanRepository carePlanRepository;
     private final CarePlanTaskRepository carePlanTaskRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ClinicianRepository clinicianRepository;
 
 
-    public CarePlanService(PatientRepository patientRepository, CarePlanRepository carePlanRepository, CarePlanTaskRepository carePlanTaskRepository, AppointmentRepository appointmentRepository) {
+    public CarePlanService(PatientRepository patientRepository, CarePlanRepository carePlanRepository, CarePlanTaskRepository carePlanTaskRepository, AppointmentRepository appointmentRepository, ClinicianRepository clinicianRepository) {
         this.patientRepository = patientRepository;
         this.carePlanRepository = carePlanRepository;
         this.carePlanTaskRepository = carePlanTaskRepository;
         this.appointmentRepository = appointmentRepository;
+        this.clinicianRepository = clinicianRepository;
     }
 
     public CarePlanResponse createCarePlan(UUID clinicianUserId, CarePlanRequest request) {
@@ -111,17 +111,24 @@ public class CarePlanService {
 
     }
 
-    private CarePlanResponse mapToResponse(CarePlansRecord plansRecord) {
+    private CarePlanResponse mapToResponse(CarePlansRecord record) {
+        List<CarePlanTaskResponse> tasks = carePlanTaskRepository.findByPlanId(record.getId()).stream()
+                .map(t -> CarePlanTaskResponse.builder()
+                        .id(t.getId()).title(t.getTitle()).description(t.getDescription())
+                        .dueDate(t.getDueDate()).weight(t.getWeight()).status(t.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+
+        String clinicianName = clinicianRepository.findById(record.getClinicianId())
+                .map(c -> "Dr. " + c.getFirstName() + " " + c.getLastName())
+                .orElse("Unknown");
 
         return CarePlanResponse.builder()
-                .id(plansRecord.getId())
-                .title(plansRecord.getTitle())
-                .description(plansRecord.getDescription())
-                .clinicianId(plansRecord.getClinicianId())
-                .patientId(plansRecord.getPatientId())
-                .status(plansRecord.getStatus())
-                .progressPercentage(plansRecord.getProgressPercentage())
-                .createdAt(plansRecord.getCreatedAt())
+                .id(record.getId()).patientId(record.getPatientId())
+                .clinicianId(record.getClinicianId()).clinicianName(clinicianName)
+                .title(record.getTitle()).description(record.getDescription())
+                .status(record.getStatus()).progressPercentage(record.getProgressPercentage())
+                .createdAt(record.getCreatedAt()).tasks(tasks)
                 .build();
     }
 }
