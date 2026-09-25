@@ -55,5 +55,12 @@ public class CarePlanController {
         return ResponseEntity.ok(new ApiResponse("Assigned task updated"));
     }
 
+    @GetMapping("/my-issued-plans")
+    @PreAuthorize("hasRole('CLINICIAN')")
+    public ResponseEntity<List<CarePlanResponse>> getIssuedPlans(Authentication authentication) {
+        UUID clinicianId = UUID.fromString(authentication.getPrincipal().toString());
+        return ResponseEntity.ok(carePlanService.getPlansByClinician(clinicianId));
+    }
+
 
 }

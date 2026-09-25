@@ -9,8 +9,10 @@ import com.careslot.dto.appointment.AppointmentResponse;
 import com.careslot.exception.ResourceNotFoundException;
 import com.careslot.exception.SlotNotAvailableException;
 import com.careslot.repository.AppointmentRepository;
+import com.careslot.repository.CarePlanRepository;
 import com.careslot.repository.ClinicianRepository;
 import com.careslot.repository.PatientRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -28,13 +30,15 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final ClinicianRepository clinicianRepository;
+    private final CarePlanRepository carePlanRepository;
 
     public AppointmentService(AppointmentRepository appointmentRepository,
                               PatientRepository patientRepository,
-                              ClinicianRepository clinicianRepository) {
+                              ClinicianRepository clinicianRepository, CarePlanRepository carePlanRepository) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.clinicianRepository = clinicianRepository;
+        this.carePlanRepository = carePlanRepository;
     }
 
     public AppointmentResponse bookAppointment(UUID patientUserId, AppointmentBookingRequest request) {
@@ -110,17 +114,30 @@ public class AppointmentService {
         appointmentRepository.updateStatus(appointmentId,AppointmentStatus.CANCELLED);
     }
 
-    public void completeAppointment(UUID appointmentId,UUID clinicianId){
-        AppointmentsRecord appointment=appointmentRepository.findById(appointmentId)
-                .orElseThrow(()->new ResourceNotFoundException("Appointment not found"));
-        if(!appointment.getClinicianId().equals(clinicianId)){
-            throw new IllegalArgumentException("Only assigned Clinician for this appointment");
+    public void completeAppointment(UUID appointmentId, UUID clinicianUserId) {
+
+        AppointmentsRecord appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
+
+        if (!appointment.getClinicianId().equals(clinicianUserId)) {
+            throw new AccessDeniedException("Unauthorized");
         }
 
-        if(appointment.getStatus()!=AppointmentStatus.BOOKED){
-            throw new IllegalArgumentException("Only Booked appointment can be completed");
+        if (appointment.getStatus() == AppointmentStatus.COMPLETED) {
+            throw new IllegalStateException("Already completed");
         }
-        appointmentRepository.updateStatus(appointmentId,AppointmentStatus.COMPLETED);
+
+        boolean hasCarePlan = carePlanRepository.existsActivePlan(
+                appointment.getPatientId(),
+                appointment.getClinicianId()
+        );
+
+        if (!hasCarePlan) {
+            throw new IllegalArgumentException(
+                    "Cannot complete: A Care Plan must be created first. Use the 'Create Plan' button."
+            );
+        }
+        appointmentRepository.updateStatus(appointmentId, AppointmentStatus.COMPLETED);
     }
 
     public List<AppointmentResponse> getPatientHistory(UUID patientId){

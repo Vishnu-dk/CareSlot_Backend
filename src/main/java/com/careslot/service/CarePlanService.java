@@ -11,11 +11,13 @@ import com.careslot.dto.careplan.CarePlanTaskResponse;
 import com.careslot.exception.ResourceNotFoundException;
 import com.careslot.exception.UserAlreadyExistsException;
 import com.careslot.repository.*;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -43,13 +45,40 @@ public class CarePlanService {
             throw new ResourceNotFoundException("Patient profile not found.");
         }
 
-        if (!appointmentRepository.existsValidAppointment(request.getPatientId(), clinicianUserId)) {
-            throw new ResourceNotFoundException("Cannot create care plan: No 'BOOKED' appointment found between this clinician and patient.");
+
+
+        var appointments = appointmentRepository.findActiveOrRecentByPatientAndClinician(
+                request.getPatientId(),
+                clinicianUserId
+        );
+        if (appointments.isEmpty()) {
+            throw new ResourceNotFoundException("No active or recent appointment found to link this care plan.");
+        }
+        var targetAppointment = appointments.get();
+
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime appointmentStart = targetAppointment.getStartsAt();
+        OffsetDateTime appointmentEnd = targetAppointment.getEndsAt();
+
+
+        OffsetDateTime earliestAllowed = appointmentStart.minusMinutes(5);
+        OffsetDateTime latestAllowed = appointmentEnd.plusMinutes(5);
+
+        if (now.isBefore(earliestAllowed)) {
+            throw new IllegalArgumentException(
+                    "Too early: You can only create care plans starting 1 hour before the appointment begins."
+            );
         }
 
-        if (carePlanRepository.existsActivePlan(request.getPatientId(), clinicianUserId)) {
-            throw new UserAlreadyExistsException("An active care plan has already been issued to this patient.");
+        if (now.isAfter(latestAllowed)) {
+            throw new IllegalArgumentException(
+                    "Too late: The appointment window has closed. Please contact admin for exceptions."
+            );
         }
+
+        // 3. Check for Duplicate Active Plans
+
+
 
         CarePlansRecord planRecord = carePlanRepository.save(request.getPatientId(), clinicianUserId, request.getTitle(), request.getDescription());
         request.getTasks().forEach(task ->
@@ -157,5 +186,10 @@ public class CarePlanService {
                 .status(record.getStatus()).progressPercentage(record.getProgressPercentage())
                 .createdAt(record.getCreatedAt()).tasks(tasks)
                 .build();
+    }
+
+    public List<CarePlanResponse> getPlansByClinician(UUID clinicianId) {
+        List<CarePlansRecord> plans = carePlanRepository.findByClinicianId(clinicianId);
+        return plans.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 }

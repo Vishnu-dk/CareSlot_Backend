@@ -68,4 +68,10 @@ public class CarePlanRepository {
                 .execute();
     }
 
+
+    public List<CarePlansRecord> findByClinicianId(UUID clinicianId) {
+        return dsl.selectFrom(CARE_PLANS)
+                .where(CARE_PLANS.CLINICIAN_ID.eq(clinicianId))
+                .fetch();
+    }
 }

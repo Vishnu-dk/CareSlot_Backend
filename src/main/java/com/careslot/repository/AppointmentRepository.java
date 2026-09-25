@@ -132,4 +132,12 @@ public class AppointmentRepository {
                 .fetchOptional();
     }
 
+
+
+    public Optional<AppointmentsRecord> findActiveOrRecentByPatientAndClinician( UUID patientId, UUID clinicianUserId){
+        return dsl.selectFrom(APPOINTMENTS)
+                .where(APPOINTMENTS.CLINICIAN_ID.eq(clinicianUserId))
+                .and(APPOINTMENTS.PATIENT_ID.eq(patientId))
+                .fetchOptional();
+    }
 }
