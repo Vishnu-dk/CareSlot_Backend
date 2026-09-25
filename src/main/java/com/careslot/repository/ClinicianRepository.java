@@ -1,12 +1,19 @@
 package com.careslot.repository;
 
 import com.careslot.db.generated.tables.records.CliniciansRecord;
+import com.careslot.db.generated.tables.records.UsersRecord;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import static com.careslot.db.generated.tables.Appointments.APPOINTMENTS;
 import static com.careslot.db.generated.tables.Clinicians.CLINICIANS;
+import static com.careslot.db.generated.tables.Patients.PATIENTS;
+import static com.careslot.db.generated.tables.Users.USERS;
 
 @Repository
 public class ClinicianRepository {
@@ -42,4 +49,5 @@ public class ClinicianRepository {
 
         record.store();
     }
+
 }

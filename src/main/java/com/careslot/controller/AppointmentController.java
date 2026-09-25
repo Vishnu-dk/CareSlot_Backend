@@ -79,4 +79,10 @@ public class AppointmentController {
         UUID clinicianUserId = UUID.fromString(authentication.getPrincipal().toString());
         return ResponseEntity.ok(appointmentService.getClinicianDailySchedule(clinicianUserId, date));
     }
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<AppointmentResponse>> getAllAppointments() {
+
+        return ResponseEntity.ok(appointmentService.getAllAppointment());
+    }
 }

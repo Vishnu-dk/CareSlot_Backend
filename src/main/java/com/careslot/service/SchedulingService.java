@@ -115,4 +115,12 @@ public class SchedulingService {
                 .sorted(Comparator.comparing(WeeklyAvailabilityResponse::getDayOfWeek))
                 .toList();
     }
+
+    public void deleteAvailability(UUID userId, Short dayOfWeek) {
+        if (!clinicianRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("Clinician profile not found for user ");
+        }
+        clinicianAvailabilityRepository.deleteByClinicianIdAndDay(userId,dayOfWeek);
+
+    }
 }

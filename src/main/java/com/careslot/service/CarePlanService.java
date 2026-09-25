@@ -1,6 +1,7 @@
 package com.careslot.service;
 
 
+import com.careslot.db.generated.enums.CarePlanStatus;
 import com.careslot.db.generated.enums.TaskStatus;
 import com.careslot.db.generated.tables.records.CarePlanTasksRecord;
 import com.careslot.db.generated.tables.records.CarePlansRecord;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -59,11 +61,7 @@ public class CarePlanService {
 
     public List<CarePlanResponse> getMyCarePlans(UUID patientUserId) {
 
-        boolean hasBookedAppointment=appointmentRepository.hasBookedAppointment(patientUserId);
 
-        if (!hasBookedAppointment) {
-            throw new ResourceNotFoundException("You do not have any ongoing treatments or booked appointments with a clinician.");
-        }
 
         List<CarePlansRecord> plans = carePlanRepository.findByPatientId(patientUserId);
         if (plans.isEmpty()) {
@@ -80,13 +78,42 @@ public class CarePlanService {
         CarePlansRecord plan = carePlanRepository.findById(task.getCarePlanId())
                 .orElseThrow(() -> new ResourceNotFoundException("Care plan not found"));
 
+
         if (!plan.getPatientId().equals(patientUserId)) {
             throw new ResourceNotFoundException("You do not have permission to update this task");
         }
 
+        if (task.getStatus() == TaskStatus.COMPLETED) {
+            throw new IllegalArgumentException("This task has already been completed and cannot be modified.");
+        }
+
+
+        if (newStatus == TaskStatus.COMPLETED) {
+            LocalDate today = LocalDate.now();
+            LocalDate dueDate = task.getDueDate();
+
+
+            if (dueDate != null && dueDate.isBefore(today)) {
+                throw new IllegalArgumentException(
+                        "Cannot complete task: The deadline  has passed."
+                );
+            }
+        }
+
         carePlanTaskRepository.updateTaskStatus(taskId, newStatus);
+
         BigDecimal newProgress = calculateProgress(plan.getId());
-        carePlanRepository.updateProgress(plan.getId(), newProgress);
+
+        CarePlanStatus finalStatus = plan.getStatus(); // Default to current
+
+        if (newProgress.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            finalStatus = CarePlanStatus.COMPLETED;
+        }
+        else if (finalStatus == CarePlanStatus.COMPLETED) {
+            finalStatus = CarePlanStatus.ACTIVE;
+        }
+
+        carePlanRepository.updateProgressAndStatus(plan.getId(), newProgress, finalStatus);
     }
 
     public BigDecimal calculateProgress(UUID planId){

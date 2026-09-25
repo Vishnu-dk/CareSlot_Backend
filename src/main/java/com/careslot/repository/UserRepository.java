@@ -5,6 +5,8 @@ import com.careslot.db.generated.tables.records.UsersRecord;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +35,13 @@ public class UserRepository {
                 .fetchOptional();
     }
 
+    public Optional<UsersRecord> findAllUserById(UUID id){
+        return dsl.selectFrom(USERS)
+                .where(USERS.ID.eq(id))
+                .fetchOptional();
+    }
+
+
     public UsersRecord save(UsersRecord user){
         user.store();
         return user;
@@ -44,5 +53,31 @@ public class UserRepository {
                         .where(USERS.EMAIL.eq(email))
                         .and(USERS.DELETED_AT.isNull())
         )>0;
+    }
+    public List<UsersRecord> findAllActive() {
+        return dsl.selectFrom(USERS)
+                .where(USERS.DELETED_AT.isNull()) // Only non-deleted
+                .fetch();
+    }
+
+
+    public Optional<UsersRecord> findByIdActive(UUID userId) {
+        return dsl.selectFrom(USERS)
+                .where(USERS.ID.eq(userId))
+                .and(USERS.DELETED_AT.isNull())
+                .fetchOptional();
+    }
+    public void deactivateUser(UUID userId) {
+        dsl.update(USERS)
+                .set(USERS.DELETED_AT, OffsetDateTime.now())
+                .where(USERS.ID.eq(userId))
+                .execute();
+    }
+
+    public void activateUser(UUID userId) {
+        dsl.update(USERS)
+                .setNull(USERS.DELETED_AT)
+                .where(USERS.ID.eq(userId))
+                .execute();
     }
 }

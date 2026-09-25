@@ -60,5 +60,12 @@ public class CarePlanRepository {
                         .and(CARE_PLANS.STATUS.eq(CarePlanStatus.ACTIVE))
         ) > 0;
     }
+    public void updateProgressAndStatus(UUID planId, BigDecimal progress, CarePlanStatus status) {
+        dsl.update(CARE_PLANS)
+                .set(CARE_PLANS.PROGRESS_PERCENTAGE, progress)
+                .set(CARE_PLANS.STATUS, status) //
+                .where(CARE_PLANS.ID.eq(planId))
+                .execute();
+    }
 
 }

@@ -54,6 +54,10 @@ public class AuthService {
         UsersRecord user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid Credentials"));
 
+        if (user.getDeletedAt() != null) {
+            throw new InvalidCredentialsException("Account has been deactivated. Contact support.");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Invalid Credentials");
         }

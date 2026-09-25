@@ -1,18 +1,21 @@
 package com.careslot.repository;
 
 
+import com.careslot.db.generated.enums.CarePlanStatus;
 import com.careslot.db.generated.enums.TaskStatus;
 import com.careslot.db.generated.tables.CarePlanTasks;
 import com.careslot.db.generated.tables.records.CarePlanTasksRecord;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static com.careslot.db.generated.tables.CarePlanTasks.CARE_PLAN_TASKS;
+import static com.careslot.db.generated.tables.CarePlans.CARE_PLANS;
 
 @Repository
 public class CarePlanTaskRepository {
@@ -55,4 +58,5 @@ public class CarePlanTaskRepository {
                 .where(CARE_PLAN_TASKS.ID.eq(taskId))
                 .execute();
     }
+
 }

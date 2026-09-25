@@ -4,9 +4,11 @@ import com.careslot.dto.auth.ApiResponse;
 import com.careslot.dto.availability.AvailableSlotResponse;
 import com.careslot.dto.availability.AvailabilityRequest;
 import com.careslot.dto.availability.WeeklyAvailabilityResponse;
+import com.careslot.exception.ResourceNotFoundException;
 import com.careslot.service.SchedulingService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -44,6 +46,15 @@ public class SchedulingController {
         schedulingService.updateAvailability(userId, request);
         return ResponseEntity.ok(new ApiResponse("Availability updated"));
     }
+    @DeleteMapping("/availability/{dayOfWeek}")
+    @PreAuthorize("hasRole('CLINICIAN') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse> deleteAvailability(
+            @PathVariable Short dayOfWeek ,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getPrincipal().toString());
+        schedulingService.deleteAvailability(userId, dayOfWeek);
+        return ResponseEntity.ok(new ApiResponse("Availability deleted"));
+    }
 
     @GetMapping("/clinicians/{userId}/slots")
     @PreAuthorize("isAuthenticated()")
@@ -58,7 +69,11 @@ public class SchedulingController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<WeeklyAvailabilityResponse>> getWeeklyAvailability(
             @PathVariable UUID userId) {
-        List<WeeklyAvailabilityResponse> weeklySchedule = schedulingService.getWeeklyAvailability(userId);
-        return ResponseEntity.ok(weeklySchedule);
+        try {
+            List<WeeklyAvailabilityResponse> schedule = schedulingService.getWeeklyAvailability(userId);
+            return ResponseEntity.ok(schedule);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 }

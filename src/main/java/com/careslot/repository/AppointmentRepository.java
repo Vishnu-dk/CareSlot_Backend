@@ -3,6 +3,7 @@ package com.careslot.repository;
 
 import com.careslot.db.generated.enums.AppointmentStatus;
 import com.careslot.db.generated.tables.records.AppointmentsRecord;
+import jakarta.validation.constraints.NotNull;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.config.DeprecatedBeanWarner;
 import org.springframework.dao.DataAccessException;
@@ -50,6 +51,19 @@ public class AppointmentRepository {
     public List<AppointmentsRecord> findByPatientId(UUID patientId){
         return dsl.selectFrom(APPOINTMENTS)
                 .where(APPOINTMENTS.PATIENT_ID.eq(patientId))
+                .orderBy(APPOINTMENTS.STARTS_AT.desc())
+                .fetch();
+    }
+
+    public List<AppointmentsRecord> findAllAppointment(){
+        return dsl.selectFrom(APPOINTMENTS)
+                .orderBy(APPOINTMENTS.STARTS_AT.desc())
+                .fetch();
+    }
+
+    public List<AppointmentsRecord> findByClinicianId(UUID clinicianId){
+        return dsl.selectFrom(APPOINTMENTS)
+                .where(APPOINTMENTS.CLINICIAN_ID.eq(clinicianId))
                 .orderBy(APPOINTMENTS.STARTS_AT.desc())
                 .fetch();
     }
@@ -108,4 +122,14 @@ public class AppointmentRepository {
             throw e;
         }
     }
+
+    public Optional<AppointmentsRecord> findCancelledAppointment(UUID clinicianId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
+        return dsl.selectFrom(APPOINTMENTS)
+                .where(APPOINTMENTS.CLINICIAN_ID.eq(clinicianId))
+                .and(APPOINTMENTS.STARTS_AT.eq(startsAt))
+                .and(APPOINTMENTS.ENDS_AT.eq(endsAt))
+                .and(APPOINTMENTS.STATUS.eq(AppointmentStatus.CANCELLED))
+                .fetchOptional();
+    }
+
 }

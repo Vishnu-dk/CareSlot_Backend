@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -43,34 +44,49 @@ public class AppointmentService {
         if (!clinicianRepository.existsById(request.getClinicianId())) {
             throw new ResourceNotFoundException("Clinician not found");
         }
-
-
         OffsetDateTime startsAt = OffsetDateTime.of(request.getDate(), request.getStartTime(), ZoneOffset.UTC);
         OffsetDateTime endsAt = OffsetDateTime.of(request.getDate(), request.getEndTime(), ZoneOffset.UTC);
+
+
         if (appointmentRepository.existsOverlappingForPatient(patient.getId(), startsAt, endsAt)) {
             throw new SlotNotAvailableException("You already have an appointment scheduled at this time.");
         }
-        if(appointmentRepository.existsValidAppointment( patient.getId(), request.getClinicianId())){
+        if (appointmentRepository.existsValidAppointment(patient.getId(), request.getClinicianId())) {
             throw new SlotNotAvailableException("You already have an appointment with this clinician");
         }
-        try {
-            var record = appointmentRepository.save(patient.getId(), request.getClinicianId(), startsAt, endsAt, request.getReason());
 
-            return AppointmentResponse.builder()
-                    .id(record.getId())
-                    .patientId(record.getPatientId())
-                    .clinicianId(record.getClinicianId())
-                    .startsAt(record.getStartsAt())
-                    .endsAt(record.getEndsAt())
-                    .status(record.getStatus())
-                    .reason(record.getReasonForVisit())
-                    .build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().equals("Slot is already booked")) {
-                throw new SlotNotAvailableException("This time slot has just been booked by someone else. Please choose another time.");
+        AppointmentsRecord record;
+
+        Optional<AppointmentsRecord> cancelledAppointment = appointmentRepository
+                .findCancelledAppointment(request.getClinicianId(), startsAt, endsAt);
+
+        if (cancelledAppointment.isPresent()) {
+            record = cancelledAppointment.get();
+            record.setPatientId(patient.getId());
+            record.setReasonForVisit(request.getReason());
+            record.setStatus(AppointmentStatus.BOOKED);
+            record.store();
+        } else {
+            try {
+                record = appointmentRepository.save(patient.getId(), request.getClinicianId(), startsAt, endsAt, request.getReason());
+            } catch (RuntimeException e) {
+                if (e.getMessage().equals("Slot is already booked")) {
+                    throw new SlotNotAvailableException("This time slot has just been booked by someone else. Please choose another time.");
+                }
+                throw e;
             }
-            throw e;
         }
+
+        return AppointmentResponse.builder()
+                .id(record.getId())
+                .patientId(record.getPatientId())
+                .clinicianId(record.getClinicianId())
+                .startsAt(record.getStartsAt())
+                .endsAt(record.getEndsAt())
+                .status(record.getStatus())
+                .reason(record.getReasonForVisit())
+                .build();
+
     }
 
     public void cancelAppointment(UUID appointmentId, UUID userId, UserRole role){
@@ -109,6 +125,12 @@ public class AppointmentService {
 
     public List<AppointmentResponse> getPatientHistory(UUID patientId){
         return appointmentRepository.findByPatientId(patientId).stream()
+                .map(this::mapResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<AppointmentResponse> getAllAppointment(){
+        return appointmentRepository.findAllAppointment().stream()
                 .map(this::mapResponse)
                 .collect(Collectors.toList());
     }
