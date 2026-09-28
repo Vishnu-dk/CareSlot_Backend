@@ -43,7 +43,7 @@ public class PatientController {
     }
 
     @GetMapping("/my-profile")
-    @PreAuthorize("hasRole('PATIENT')")
+   // @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<PatientResponse> getMyProfile(Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getPrincipal().toString());
         PatientResponse profile = patientService.getProfileByUserId(userId);

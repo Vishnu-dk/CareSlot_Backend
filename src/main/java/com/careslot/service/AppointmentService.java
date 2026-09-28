@@ -15,10 +15,7 @@ import com.careslot.repository.PatientRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,6 +47,14 @@ public class AppointmentService {
         }
         OffsetDateTime startsAt = OffsetDateTime.of(request.getDate(), request.getStartTime(), ZoneOffset.UTC);
         OffsetDateTime endsAt = OffsetDateTime.of(request.getDate(), request.getEndTime(), ZoneOffset.UTC);
+        OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+
+        if (startsAt.isBefore(nowUtc)) {
+            throw new IllegalArgumentException("The selected time slot is invalid");
+        }
+        if(carePlanRepository.existsActivePlan(patientUserId,request.getClinicianId())){
+            throw new IllegalArgumentException("There is assigned care plan to be completed ");
+        }
 
 
         if (appointmentRepository.existsOverlappingForPatient(patient.getId(), startsAt, endsAt)) {

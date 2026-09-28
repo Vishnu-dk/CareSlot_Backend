@@ -72,4 +72,11 @@ public class ClinicianController {
         List<PatientAppointmentResponse> patients = clinicianService.getMyPatients(userId);
         return ResponseEntity.ok(patients);
     }
+    @GetMapping("/my-profile")
+    //@PreAuthorize("hasRole('CLINICIAN')")
+    public ResponseEntity<ClinicianResponse> getMyProfile(Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getPrincipal().toString());
+        ClinicianResponse profile = clinicianService.getProfileByUserId(userId);
+        return ResponseEntity.ok(profile);
+    }
 }

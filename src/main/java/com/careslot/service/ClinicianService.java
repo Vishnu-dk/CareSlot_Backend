@@ -112,4 +112,15 @@ public class ClinicianService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
+    public ClinicianResponse getProfileByUserId(UUID userId) {
+        return clinicianRepo.findById(userId)
+                .map(c -> ClinicianResponse.builder()
+                        .userId(c.getId())
+                        .firstName(c.getFirstName())
+                        .lastName(c.getLastName())
+                        .specialty(c.getSpecialty())
+                        .licenseNumber(c.getLicenseNumber())
+                        .build())
+                .orElseThrow(() -> new ResourceNotFoundException("Clinician profile not found"));
+    }
 }

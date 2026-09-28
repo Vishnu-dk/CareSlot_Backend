@@ -15,6 +15,7 @@ public class ClinicianResponse {
     private String firstName;
     private String lastName;
     private String specialty;
+    private String licenseNumber;
     private String email;
     private LocalDate deletedAt;
 }
